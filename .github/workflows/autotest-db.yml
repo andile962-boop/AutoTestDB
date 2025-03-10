@@ -1,1 +1,40 @@
+name: AutoTest DB Creation
 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  create-database:
+    runs-on: windows-latest  # Windows runner for SQL Server compatibility
+    
+    steps:
+      # Checkout repository code
+      - uses: actions/checkout@v3
+      
+      # Install SQL Server tools (sqlcmd)
+      - name: Install SQL Server Tools
+        uses: potatoqualitee/mssqlsuite@v1.8
+        with:
+          install: sqlclient
+
+      # Execute SQL script using sqlcmd
+      - name: Create Database and Table
+        env:
+          SQL_SERVER: ${{ secrets.NGROK_SERVER }}  # e.g., 0.tcp.ngrok.io
+          SQL_PORT: ${{ secrets.NGROK_PORT }}     # e.g., 12345
+          SQL_USER: Auto_user
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        run: |
+          sqlcmd -S ${{ env.SQL_SERVER }},${{ env.SQL_PORT }} -U ${{ env.SQL_USER }} -P ${{ env.SQL_PASSWORD }} -Q "EXEC sp_CreateAutoTestDB"
+          
+      # Verify creation
+      - name: Verify Database Creation
+        env:
+          SQL_SERVER: ${{ secrets.NGROK_SERVER }}
+          SQL_PORT: ${{ secrets.NGROK_PORT }}
+          SQL_USER: Auto_user
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+        run: |
+          sqlcmd -S ${{ env.SQL_SERVER }},${{ env.SQL_PORT }} -U ${{ env.SQL_USER }} -P ${{ env.SQL_PASSWORD }} -d AutoTest -Q "SELECT * FROM [user]"
